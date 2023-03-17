@@ -74,7 +74,6 @@ func NewClient(socket *websocket.Conn, findHandler FindHandler,
 	if len(res.GeneratedKeys) > 0 {
 		id = res.GeneratedKeys[0]
 	}
-
 	return &Client{
 		send:         make(chan Message),
 		socket:       socket,
