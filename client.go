@@ -2,7 +2,7 @@ package main
 
 import (
 	"log"
-
+	"sync"
 	"github.com/gorilla/websocket"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
@@ -17,6 +17,7 @@ type Client struct {
 	stopChannels map[int]chan bool
 	id           string
 	userName     string
+	closeOnce    sync.Once
 }
 
 func (c *Client) NewStopChannel(stopKey int) chan bool {
@@ -34,10 +35,13 @@ func (c *Client) StopForKey(key int) {
 }
 
 func (c *Client) Close() {
-	for _, ch := range c.stopChannels {
-		ch <- true
-	}
-	close(c.send)
+	c.closeOnce.Do(func() {
+		for _, ch := range c.stopChannels {
+			ch <- true
+		}
+		close(c.send)
+		c.socket.Close()
+	})
 }
 
 func (client *Client) Read() {
@@ -50,7 +54,7 @@ func (client *Client) Read() {
 			handler(client, message.Data)
 		}
 	}
-	client.socket.Close()
+	client.Close()
 }
 
 func (client *Client) Write() {
@@ -59,7 +63,7 @@ func (client *Client) Write() {
 			break
 		}
 	}
-	client.socket.Close()
+	client.Close()
 }
 
 func NewClient(socket *websocket.Conn, findHandler FindHandler,
